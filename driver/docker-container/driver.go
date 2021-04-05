@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/docker/buildx/driver"
@@ -25,6 +26,8 @@ import (
 )
 
 type Driver struct {
+	mu sync.Mutex
+
 	driver.InitConfig
 	factory driver.Factory
 	netMode string
@@ -42,6 +45,9 @@ func (d *Driver) Config() driver.InitConfig {
 
 func (d *Driver) Bootstrap(ctx context.Context, l progress.Logger) error {
 	return progress.Wrap("[internal] booting buildkit", l, func(sub progress.SubLogger) error {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+
 		_, err := d.DockerAPI.ContainerInspect(ctx, d.Name)
 		if err != nil {
 			if dockerclient.IsErrNotFound(err) {
